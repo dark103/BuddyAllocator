@@ -50,6 +50,7 @@
  **************************************************************************/
 typedef struct {
 	struct list_head list;
+	char* address;
 	/* TODO: DECLARE NECESSARY MEMBER VARIABLES */
 } page_t;
 
@@ -82,6 +83,8 @@ void buddy_init()
 	int n_pages = (1<<MAX_ORDER) / PAGE_SIZE;
 	for (i = 0; i < n_pages; i++) {
 		/* TODO: INITIALIZE PAGE STRUCTURES */
+		g_pages[i].address = PAGE_TO_ADDR(i);
+		INIT_LIST_HEAD(&(g_pages[i].list));
 	}
 
 	/* initialize freelist */
@@ -109,7 +112,28 @@ void buddy_init()
  */
 void *buddy_alloc(int size)
 {
-	/* TODO: IMPLEMENT THIS FUNCTION */
+	if(size > (1<<MAX_ORDER))
+	{
+		printf("Size too big for memory space\n");
+		return NULL;
+	}
+
+	int index = MIN_ORDER;
+	while(size > (1<<index))
+	{
+		index++;
+	}
+	struct list_head head = free_area[index];
+	if(!list_empty(&head))
+	{
+		//return head to page to address
+	}
+	else
+	{
+		//loop through higher blocks, split them until one has block of right
+		//size and then get its page and return that page's address
+	}
+
 	return NULL;
 }
 
