@@ -10,6 +10,9 @@ void buddy_free(void *addr);
 void buddy_dump();
 
 Node* find_order(int order);
-Node* find_page(page_t page);
+Node* find_order_recursive(Node* current, int order);
+Node* find_page(int page);
+Node* find_page_recursive(Node* current, int page);
+Node* init_node(Node* parent, int page);
 
 #endif // BUDDY_H

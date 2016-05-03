@@ -58,9 +58,10 @@ struct Node {
   Node* right;
   Node* parent;
 
-  page_t* page;
+  int pageIndex;
 
 	int order;
+	int free;
 };
 
 /**************************************************************************
@@ -106,11 +107,13 @@ void buddy_init()
 	/* add the entire memory as a freeblock */
 	list_add(&g_pages[0].list, &free_area[MAX_ORDER]);
 
+	root = malloc(sizeof(Node));
 	root->parent = 0;
 	root->left = 0;
 	root->right = 0;
 	root->order = MAX_ORDER;
-	root->page = &g_pages[0];
+	root->free = 1;
+	root->pageIndex = 0;
 }
 
 /**
@@ -135,45 +138,75 @@ void *buddy_alloc(int size)
 		return NULL;
 	}
 
-	Node* temp = malloc(sizeof(Node));
-	root->left = temp;
+	int newOrder = MIN_ORDER;
+	while(size > (1<<newOrder))
+	{
+		newOrder++;
+	}
+
+	int splits = 0;
+	Node* temp = 0;
+	while(temp == 0)
+	{
+		temp = find_order(newOrder);
+		newOrder++;
+		splits++;
+	}
+	if(splits == 0)
+	{
+		temp->free = 0;
+		return PAGE_TO_ADDR(temp->pageIndex);
+	}
+	while(splits > 0)
+	{
+		Node* tempLeft = init_node(temp, temp->pageIndex);
+		int pageRight = ADDR_TO_PAGE(BUDDY_ADDR(PAGE_TO_ADDR((unsigned long)temp->pageIndex), (temp->order-1)));
+		Node* tempRight = init_node(temp, pageRight);
+		temp->left = tempLeft;
+		temp->right = tempRight;
+		temp->free = 0;
+		temp = temp->left;
+		splits--;
+	}
+	return PAGE_TO_ADDR(temp->pageIndex);
 
 
 
-	// int index = MIN_ORDER;
-	// while(size > (1<<index))
-	// {
-	// 	index++;
-	// }
-	// struct list_head head = free_area[index];
-	// if(!list_empty(&head))
-	// {
-	// 	page_t* page = list_entry(head.next, page_t, list);
-	// 	page->order = index;
-	// 	return PAGE_TO_ADDR((unsigned long) (g_pages - page));
-	// }
-	// else
-	// {
-	// 	int splits = 1;
-	// 	index++;
-	// 	while(index <= MAX_ORDER && list_empty(&(free_area[index])))
-	// 	{
-	// 		splits++;
-	// 		index++;
-	// 	}
-	// 	head = free_area[index];
-	// 	page_t* page =  list_entry(head.next, page_t, list);
-	// 	while(splits > 0)
-	// 	{
-	// 		page_t buddy = g_pages[ADDR_TO_PAGE(BUDDY_ADDR(PAGE_TO_ADDR((unsigned long) (page - g_pages)), (index-1)))];
-	// 		buddy.order = index - 1;
-	// 		list_add(&buddy.list, &free_area[index-1]);
-	// 		splits--;
-	// 		index--;
-	// 	}
-	// 	page->order = index;
-	// 	return PAGE_TO_ADDR((unsigned long) (g_pages - page));
-	// }
+	/*old code
+	int index = MIN_ORDER;
+	while(size > (1<<index))
+	{
+		index++;
+	}
+	struct list_head head = free_area[index];
+	if(!list_empty(&head))
+	{
+		page_t* page = list_entry(head.next, page_t, list);
+		page->order = index;
+		return PAGE_TO_ADDR((unsigned long) (g_pages - page));
+	}
+	else
+	{
+		int splits = 1;
+		index++;
+		while(index <= MAX_ORDER && list_empty(&(free_area[index])))
+		{
+			splits++;
+			index++;
+		}
+		head = free_area[index];
+		page_t* page =  list_entry(head.next, page_t, list);
+		while(splits > 0)
+		{
+			page_t buddy = g_pages[ADDR_TO_PAGE(BUDDY_ADDR(PAGE_TO_ADDR((unsigned long) (page - g_pages)), (index-1)))];
+			buddy.order = index - 1;
+			list_add(&buddy.list, &free_area[index-1]);
+			splits--;
+			index--;
+		}
+		page->order = index;
+		return PAGE_TO_ADDR((unsigned long) (g_pages - page));
+	}*/
 
 	return NULL;
 }
@@ -190,6 +223,10 @@ void *buddy_alloc(int size)
 void buddy_free(void *addr)
 {
 	/* TODO: IMPLEMENT THIS FUNCTION */
+	
+
+
+
 	// page_t* page = &g_pages[ADDR_TO_PAGE(addr)];
 	// int index = page->order;
 	// page_t* buddy = &g_pages[ADDR_TO_PAGE(BUDDY_ADDR(PAGE_TO_ADDR((unsigned long) (page - g_pages)), (index)))];
@@ -213,4 +250,94 @@ void buddy_dump()
 		printf("%d:%dK ", cnt, (1<<o)/1024);
 	}
 	printf("\n");
+}
+
+Node* find_order(int order)
+{
+	if(root->order == order && root->free == 1)
+		return root;
+	else
+		return find_order_recursive(root, order);
+}
+
+Node* find_order_recursive(Node* current, int order)
+{
+	Node* left = current->left;
+	if(left != 0)
+	{
+		if(left->order == order && left->free == 1)
+		{
+			return left;
+		}
+		Node* temp = find_order_recursive(left, order);
+		if(temp != 0)
+		{
+			return temp;
+		}
+	}
+	Node* right = current->right;
+	if(right != 0)
+	{
+		if(right->order == order && right->free == 1)
+		{
+			return right;
+		}
+		Node* temp = find_order_recursive(right, order);
+		if(temp != 0)
+		{
+			return temp;
+		}
+	}
+	return 0;
+}
+
+Node* find_page(int page)
+{
+	if(root->pageIndex == page)
+		return root;
+	else
+		return find_page_recursive(root, page);
+}
+
+Node* find_page_recursive(Node* current, int page)
+{
+	Node* left = current->left;
+	if(left != 0)
+	{
+		if(left->pageIndex == page)
+		{
+			return left;
+		}
+		Node* temp = find_page_recursive(left, page);
+		if(temp != 0)
+		{
+			return temp;
+		}
+	}
+	Node* right = current->right;
+	if(right != 0)
+	{
+		if(right->pageIndex == page)
+		{
+			return right;
+		}
+		Node* temp = find_page_recursive(right, page);
+		if(temp != 0)
+		{
+			return temp;
+		}
+	}
+	return 0;
+}
+
+Node* init_node(Node* parent, int page)
+{
+	Node* temp = malloc(sizeof(Node));
+	temp->parent = parent;
+	temp->left = 0;
+	temp->right = 0;
+	temp->order = parent->order - 1;
+	temp->free = 1;
+	temp->pageIndex = page;
+	return temp;
 }
