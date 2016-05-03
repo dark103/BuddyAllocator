@@ -50,7 +50,7 @@
  **************************************************************************/
 typedef struct {
 	struct list_head list;
-	/* TODO: DECLARE NECESSARY MEMBER VARIABLES */
+	int order;
 } page_t;
 
 /**************************************************************************
@@ -81,7 +81,7 @@ void buddy_init()
 	int i;
 	int n_pages = (1<<MAX_ORDER) / PAGE_SIZE;
 	for (i = 0; i < n_pages; i++) {
-		/* TODO: INITIALIZE PAGE STRUCTURES */
+		g_pages[i].order = MIN_ORDER;
 		INIT_LIST_HEAD(&(g_pages[i].list));
 	}
 
@@ -116,37 +116,40 @@ void *buddy_alloc(int size)
 		return NULL;
 	}
 
-	int index = MIN_ORDER;
-	while(size > (1<<index))
-	{
-		index++;
-	}
-	struct list_head head = free_area[index];
-	if(!list_empty(&head))
-	{
-		page_t* page = list_entry(head.next, page_t, list);
-		return PAGE_TO_ADDR((unsigned long) (g_pages - page));
-	}
-	else
-	{
-		int splits = 1;
-		index++;
-		while(index <= MAX_ORDER && list_empty(&(free_area[index])))
-		{
-			splits++;
-			index++;
-		}
-		head = free_area[index];
-		page_t* page =  list_entry(head.next, page_t, list);
-		while(splits > 0)
-		{
-			page_t* buddy = (page_t*)ADDR_TO_PAGE(BUDDY_ADDR(PAGE_TO_ADDR((unsigned long) (page - g_pages)), (index-1)));
-			list_add(&buddy->list, &free_area[index-1]);
-			splits--;
-			index--;
-		}
-		return PAGE_TO_ADDR((unsigned long) (g_pages - page));
-	}
+	// int index = MIN_ORDER;
+	// while(size > (1<<index))
+	// {
+	// 	index++;
+	// }
+	// struct list_head head = free_area[index];
+	// if(!list_empty(&head))
+	// {
+	// 	page_t* page = list_entry(head.next, page_t, list);
+	// 	page->order = index;
+	// 	return PAGE_TO_ADDR((unsigned long) (g_pages - page));
+	// }
+	// else
+	// {
+	// 	int splits = 1;
+	// 	index++;
+	// 	while(index <= MAX_ORDER && list_empty(&(free_area[index])))
+	// 	{
+	// 		splits++;
+	// 		index++;
+	// 	}
+	// 	head = free_area[index];
+	// 	page_t* page =  list_entry(head.next, page_t, list);
+	// 	while(splits > 0)
+	// 	{
+	// 		page_t buddy = g_pages[ADDR_TO_PAGE(BUDDY_ADDR(PAGE_TO_ADDR((unsigned long) (page - g_pages)), (index-1)))];
+	// 		buddy.order = index - 1;
+	// 		list_add(&buddy.list, &free_area[index-1]);
+	// 		splits--;
+	// 		index--;
+	// 	}
+	// 	page->order = index;
+	// 	return PAGE_TO_ADDR((unsigned long) (g_pages - page));
+	// }
 
 	return NULL;
 }
@@ -163,6 +166,10 @@ void *buddy_alloc(int size)
 void buddy_free(void *addr)
 {
 	/* TODO: IMPLEMENT THIS FUNCTION */
+	// page_t* page = &g_pages[ADDR_TO_PAGE(addr)];
+	// int index = page->order;
+	// page_t* buddy = &g_pages[ADDR_TO_PAGE(BUDDY_ADDR(PAGE_TO_ADDR((unsigned long) (page - g_pages)), (index)))];
+	// struct list_head* head = list_for_each_entry(buddy, &(buddy->list), list);
 }
 
 /**
