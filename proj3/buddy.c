@@ -48,16 +48,29 @@
 /**************************************************************************
  * Public Types
  **************************************************************************/
-typedef struct {
+struct page_t {
 	struct list_head list;
 	int order;
-} page_t;
+};
+
+struct Node {
+  Node* left;
+  Node* right;
+  Node* parent;
+
+  page_t* page;
+
+	int order;
+};
 
 /**************************************************************************
  * Global Variables
  **************************************************************************/
 /* free lists*/
 struct list_head free_area[MAX_ORDER+1];
+
+//root of tree
+Node* root;
 
 /* memory area */
 char g_memory[1<<MAX_ORDER];
@@ -92,6 +105,12 @@ void buddy_init()
 
 	/* add the entire memory as a freeblock */
 	list_add(&g_pages[0].list, &free_area[MAX_ORDER]);
+
+	root->parent = 0;
+	root->left = 0;
+	root->right = 0;
+	root->order = MAX_ORDER;
+	root->page = &g_pages[0];
 }
 
 /**
@@ -115,6 +134,11 @@ void *buddy_alloc(int size)
 		printf("Size too big for memory space\n");
 		return NULL;
 	}
+
+	Node* temp = malloc(sizeof(Node));
+	root->left = temp;
+
+
 
 	// int index = MIN_ORDER;
 	// while(size > (1<<index))
