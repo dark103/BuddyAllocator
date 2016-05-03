@@ -50,7 +50,6 @@
  **************************************************************************/
 typedef struct {
 	struct list_head list;
-	char* address;
 	/* TODO: DECLARE NECESSARY MEMBER VARIABLES */
 } page_t;
 
@@ -83,7 +82,6 @@ void buddy_init()
 	int n_pages = (1<<MAX_ORDER) / PAGE_SIZE;
 	for (i = 0; i < n_pages; i++) {
 		/* TODO: INITIALIZE PAGE STRUCTURES */
-		g_pages[i].address = PAGE_TO_ADDR(i);
 		INIT_LIST_HEAD(&(g_pages[i].list));
 	}
 
@@ -126,12 +124,28 @@ void *buddy_alloc(int size)
 	struct list_head head = free_area[index];
 	if(!list_empty(&head))
 	{
-		//return head to page to address
+		page_t* page = list_entry(head.next, page_t, list);
+		return PAGE_TO_ADDR((unsigned long) (g_pages - page));
 	}
 	else
 	{
-		//loop through higher blocks, split them until one has block of right
-		//size and then get its page and return that page's address
+		int splits = 1;
+		index++;
+		while(index <= MAX_ORDER && list_empty(&(free_area[index])))
+		{
+			splits++;
+			index++;
+		}
+		head = free_area[index];
+		page_t* page =  list_entry(head.next, page_t, list);
+		while(splits > 0)
+		{
+			page_t* buddy = (page_t*)ADDR_TO_PAGE(BUDDY_ADDR(PAGE_TO_ADDR((unsigned long) (page - g_pages)), (index-1)));
+			list_add(&buddy->list, &free_area[index-1]);
+			splits--;
+			index--;
+		}
+		return PAGE_TO_ADDR((unsigned long) (g_pages - page));
 	}
 
 	return NULL;
