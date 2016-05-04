@@ -1,0 +1,4 @@
+h = alloc(256K);
+i = alloc(256K);
+free(h);
+free(i);
