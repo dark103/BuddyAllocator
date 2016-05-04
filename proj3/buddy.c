@@ -70,6 +70,8 @@ struct Node {
 /* free lists*/
 struct list_head free_area[MAX_ORDER+1];
 
+int count[MAX_ORDER + 1];
+
 //root of tree
 Node* root;
 
@@ -143,13 +145,14 @@ void *buddy_alloc(int size)
 	{
 		newOrder++;
 	}
+	// printf("Received request of order: %d\n", newOrder);
 
 	int splits = 0;
-	Node* temp = 0;
+	Node* temp = find_order(newOrder);
 	while(temp == 0)
 	{
-		temp = find_order(newOrder);
 		newOrder++;
+		temp = find_order(newOrder);
 		splits++;
 	}
 	if(splits == 0)
@@ -159,6 +162,7 @@ void *buddy_alloc(int size)
 	}
 	while(splits > 0)
 	{
+		// printf("Splitting node of order: %d\n", temp->order);
 		Node* tempLeft = init_node(temp, temp->pageIndex);
 		int pageRight = ADDR_TO_PAGE(BUDDY_ADDR(PAGE_TO_ADDR((unsigned long)temp->pageIndex), (temp->order-1)));
 		Node* tempRight = init_node(temp, pageRight);
@@ -168,6 +172,7 @@ void *buddy_alloc(int size)
 		temp = temp->left;
 		splits--;
 	}
+	temp->free = 0;
 	return PAGE_TO_ADDR(temp->pageIndex);
 
 
@@ -223,7 +228,19 @@ void *buddy_alloc(int size)
 void buddy_free(void *addr)
 {
 	/* TODO: IMPLEMENT THIS FUNCTION */
-	
+	int page = ADDR_TO_PAGE(addr);
+	Node* node = find_page(page);
+	node->free = 1;
+	Node* parent = node->parent;
+	while(parent != 0 && (parent->left->free + parent->right->free == 2))
+	{
+		free(parent->left);
+		free(parent->right);
+		page = parent->pageIndex;
+		node = parent;
+		parent = node->parent;
+		node->free = 1;
+	}
 
 
 
@@ -240,16 +257,43 @@ void buddy_free(void *addr)
  */
 void buddy_dump()
 {
+	fillCount();
 	int o;
 	for (o = MIN_ORDER; o <= MAX_ORDER; o++) {
-		struct list_head *pos;
+		/*struct list_head *pos;
 		int cnt = 0;
 		list_for_each(pos, &free_area[o]) {
 			cnt++;
-		}
-		printf("%d:%dK ", cnt, (1<<o)/1024);
+		}*/
+		printf("%d:%dK  ", count[o], (1<<o)/1024);
 	}
 	printf("\n");
+}
+
+void fillCount()
+{
+	int i = 0;
+	for(i = 0; i <= MAX_ORDER; i++)
+	{
+		count[i] = 0;
+	}
+	countNode(root);
+}
+
+void countNode(Node* node)
+{
+	if(node->left == 0 && node->right == 0)
+	{
+		if(node->free == 1)
+			count[node->order]++;
+		return;
+	}
+
+	if(node->left != 0)
+		countNode(node->left);
+
+	if(node->right != 0)
+		countNode(node->right);
 }
 
 Node* find_order(int order)

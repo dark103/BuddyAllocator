@@ -9,6 +9,8 @@ void *buddy_alloc(int size);
 void buddy_free(void *addr);
 void buddy_dump();
 
+void fillCount();
+void countNode(Node* node);
 Node* find_order(int order);
 Node* find_order_recursive(Node* current, int order);
 Node* find_page(int page);
