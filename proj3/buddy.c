@@ -230,12 +230,15 @@ void buddy_free(void *addr)
 	/* TODO: IMPLEMENT THIS FUNCTION */
 	int page = ADDR_TO_PAGE(addr);
 	Node* node = find_page(page);
+	// printf("Found node in tree with order: %d\n", node->order);
 	node->free = 1;
 	Node* parent = node->parent;
 	while(parent != 0 && (parent->left->free + parent->right->free == 2))
 	{
 		free(parent->left);
 		free(parent->right);
+		parent->left = 0;
+		parent->right = 0;
 		page = parent->pageIndex;
 		node = parent;
 		parent = node->parent;
@@ -265,7 +268,7 @@ void buddy_dump()
 		list_for_each(pos, &free_area[o]) {
 			cnt++;
 		}*/
-		printf("%d:%dK  ", count[o], (1<<o)/1024);
+		printf("%d:%dK ", count[o], (1<<o)/1024);
 	}
 	printf("\n");
 }
@@ -337,41 +340,24 @@ Node* find_order_recursive(Node* current, int order)
 
 Node* find_page(int page)
 {
-	if(root->pageIndex == page)
-		return root;
-	else
 		return find_page_recursive(root, page);
 }
 
 Node* find_page_recursive(Node* current, int page)
 {
+	if(current == 0)
+		return 0;
+	if(current->pageIndex == page && current->left == 0)
+		return current;
 	Node* left = current->left;
-	if(left != 0)
+	Node* temp = find_page_recursive(left, page);
+	if(temp != 0)
 	{
-		if(left->pageIndex == page)
-		{
-			return left;
-		}
-		Node* temp = find_page_recursive(left, page);
-		if(temp != 0)
-		{
-			return temp;
-		}
+		return temp;
 	}
 	Node* right = current->right;
-	if(right != 0)
-	{
-		if(right->pageIndex == page)
-		{
-			return right;
-		}
-		Node* temp = find_page_recursive(right, page);
-		if(temp != 0)
-		{
-			return temp;
-		}
-	}
-	return 0;
+	temp = find_page_recursive(right, page);
+	return temp;
 }
 
 Node* init_node(Node* parent, int page)
